@@ -102,6 +102,7 @@ const TestSuites: React.FC = () => {
       ));
       setEditDialogOpen(false);
       setSelectedSuite(null);
+      setNewSuite({ name: '', description: '' });
     }
   };
 
@@ -126,6 +127,12 @@ const TestSuites: React.FC = () => {
       setEditDialogOpen(true);
     }
     handleMenuClose();
+  };
+
+  const handleEditDialogClose = () => {
+    setEditDialogOpen(false);
+    setSelectedSuite(null);
+    setNewSuite({ name: '', description: '' });
   };
 
   const formatDate = (dateString: string) => {
@@ -258,7 +265,7 @@ const TestSuites: React.FC = () => {
       </Dialog>
 
       {/* Edit Suite Dialog */}
-      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog open={editDialogOpen} onClose={handleEditDialogClose} maxWidth="sm" fullWidth>
         <DialogTitle>Edit Test Suite</DialogTitle>
         <DialogContent>
           <TextField
@@ -283,7 +290,7 @@ const TestSuites: React.FC = () => {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleEditDialogClose}>Cancel</Button>
           <Button onClick={handleEditSuite} variant="contained">Save</Button>
         </DialogActions>
       </Dialog>

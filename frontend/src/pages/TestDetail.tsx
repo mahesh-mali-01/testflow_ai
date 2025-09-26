@@ -22,6 +22,7 @@ import {
   AccordionDetails,
   Paper,
   Divider,
+  MenuItem,
 } from '@mui/material';
 import {
   PlayArrow as PlayIcon,
@@ -91,6 +92,12 @@ const TestDetail: React.FC = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    appUrl: '',
+    tags: '',
+    priority: 'medium' as const,
+  });
   const navigate = useParams();
   const { testId } = useParams();
 
@@ -103,6 +110,37 @@ const TestDetail: React.FC = () => {
       setIsRunning(false);
       setTest({ ...test, status: 'passed' as const, lastRun: new Date().toISOString() });
     }, 5000);
+  };
+
+  const handleEditClick = () => {
+    setEditForm({
+      name: test.name,
+      appUrl: test.appUrl,
+      tags: test.tags.join(', '),
+      priority: test.priority,
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleEditSave = () => {
+    setTest({
+      ...test,
+      name: editForm.name,
+      appUrl: editForm.appUrl,
+      tags: editForm.tags.split(',').map(tag => tag.trim()),
+      priority: editForm.priority,
+    });
+    setEditDialogOpen(false);
+  };
+
+  const handleEditDialogClose = () => {
+    setEditDialogOpen(false);
+    setEditForm({
+      name: '',
+      appUrl: '',
+      tags: '',
+      priority: 'medium' as const,
+    });
   };
 
   const getStepColor = (type: string) => {
@@ -181,7 +219,7 @@ const TestDetail: React.FC = () => {
               <Button
                 variant="outlined"
                 startIcon={<EditIcon />}
-                onClick={() => setEditDialogOpen(true)}
+                onClick={handleEditClick}
               >
                 Edit
               </Button>
@@ -342,7 +380,7 @@ ${test.scenarios[0].steps.map(step => `      - type: ${step.type}\n        descr
       </Card>
 
       {/* Edit Test Dialog */}
-      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="md" fullWidth>
+      <Dialog open={editDialogOpen} onClose={handleEditDialogClose} maxWidth="md" fullWidth>
         <DialogTitle>Edit Test</DialogTitle>
         <DialogContent>
           <TextField
@@ -351,7 +389,8 @@ ${test.scenarios[0].steps.map(step => `      - type: ${step.type}\n        descr
             label="Test Name"
             fullWidth
             variant="outlined"
-            defaultValue={test.name}
+            value={editForm.name}
+            onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
             sx={{ mb: 2 }}
           />
           <TextField
@@ -359,7 +398,8 @@ ${test.scenarios[0].steps.map(step => `      - type: ${step.type}\n        descr
             label="App URL"
             fullWidth
             variant="outlined"
-            defaultValue={test.appUrl}
+            value={editForm.appUrl}
+            onChange={(e) => setEditForm({ ...editForm, appUrl: e.target.value })}
             sx={{ mb: 2 }}
           />
           <TextField
@@ -367,7 +407,8 @@ ${test.scenarios[0].steps.map(step => `      - type: ${step.type}\n        descr
             label="Tags (comma-separated)"
             fullWidth
             variant="outlined"
-            defaultValue={test.tags.join(', ')}
+            value={editForm.tags}
+            onChange={(e) => setEditForm({ ...editForm, tags: e.target.value })}
             sx={{ mb: 2 }}
           />
           <TextField
@@ -376,7 +417,8 @@ ${test.scenarios[0].steps.map(step => `      - type: ${step.type}\n        descr
             fullWidth
             select
             variant="outlined"
-            defaultValue={test.priority}
+            value={editForm.priority}
+            onChange={(e) => setEditForm({ ...editForm, priority: e.target.value as any })}
           >
             <MenuItem value="low">Low</MenuItem>
             <MenuItem value="medium">Medium</MenuItem>
@@ -385,8 +427,8 @@ ${test.scenarios[0].steps.map(step => `      - type: ${step.type}\n        descr
           </TextField>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
-          <Button onClick={() => setEditDialogOpen(false)} variant="contained">Save</Button>
+          <Button onClick={handleEditDialogClose}>Cancel</Button>
+          <Button onClick={handleEditSave} variant="contained">Save</Button>
         </DialogActions>
       </Dialog>
     </Box>
