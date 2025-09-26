@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Grid,
   Card,
@@ -9,6 +9,8 @@ import {
   Chip,
   Button,
   Avatar,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import {
   Folder as FolderIcon,
@@ -20,41 +22,25 @@ import {
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { dashboardApi } from '../services/api';
 
-// Mock data for dashboard
-const mockStats = {
-  totalSuites: 12,
-  totalTests: 45,
-  totalRuns: 156,
-  passedRuns: 142,
-  failedRuns: 14,
-  runningTests: 3,
-  successRate: 91.0,
-};
+interface DashboardStats {
+  totalSuites: number;
+  totalTests: number;
+  totalRuns: number;
+  passedRuns: number;
+  failedRuns: number;
+  runningTests: number;
+  successRate: number;
+}
 
-const mockRecentRuns = [
-  {
-    id: '1',
-    testName: 'Login Flow Test',
-    status: 'passed',
-    duration: '2.3s',
-    timestamp: '2 minutes ago',
-  },
-  {
-    id: '2',
-    testName: 'API Key Generation',
-    status: 'failed',
-    duration: '4.1s',
-    timestamp: '5 minutes ago',
-  },
-  {
-    id: '3',
-    testName: 'User Registration',
-    status: 'passed',
-    duration: '3.7s',
-    timestamp: '8 minutes ago',
-  },
-];
+interface RecentRun {
+  id: string;
+  testName: string;
+  status: string;
+  duration: string;
+  timestamp: string;
+}
 
 const StatCard: React.FC<{
   title: string;
@@ -98,6 +84,82 @@ const StatCard: React.FC<{
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [recentRuns, setRecentRuns] = useState<RecentRun[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Fetch dashboard stats
+        const statsResponse = await dashboardApi.getStats();
+        if (statsResponse.success && statsResponse.data) {
+          setStats(statsResponse.data);
+        } else {
+          throw new Error(statsResponse.error || 'Failed to fetch dashboard stats');
+        }
+
+        // Fetch recent runs
+        const runsResponse = await dashboardApi.getRecentRuns(5);
+        if (runsResponse.success && runsResponse.data) {
+          // Transform the data to match our interface
+          const transformedRuns = runsResponse.data.map((run: any) => ({
+            id: run.id,
+            testName: run.testId || 'Unknown Test',
+            status: run.status,
+            duration: `${(run.executionTimeMs / 1000).toFixed(1)}s`,
+            timestamp: new Date(run.createdAt).toLocaleString(),
+          }));
+          setRecentRuns(transformedRuns);
+        }
+      } catch (err) {
+        console.error('Error fetching dashboard data:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+        <Button variant="contained" onClick={() => window.location.reload()}>
+          Retry
+        </Button>
+      </Box>
+    );
+  }
+
+  if (!stats) {
+    return (
+      <Box>
+        <Typography variant="h4" sx={{ mb: 2 }}>
+          No data available
+        </Typography>
+        <Typography variant="body1" sx={{ color: 'text.secondary' }}>
+          Create your first test suite to get started.
+        </Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box>
@@ -114,34 +176,31 @@ const Dashboard: React.FC = () => {
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Test Suites"
-            value={mockStats.totalSuites}
+            value={stats.totalSuites}
             icon={<FolderIcon />}
             color="primary.main"
-            trend={12}
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Total Tests"
-            value={mockStats.totalTests}
+            value={stats.totalTests}
             icon={<PlayIcon />}
             color="secondary.main"
-            trend={8}
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Success Rate"
-            value={`${mockStats.successRate}%`}
+            value={`${stats.successRate}%`}
             icon={<CheckIcon />}
             color="success.main"
-            trend={5}
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Running Tests"
-            value={mockStats.runningTests}
+            value={stats.runningTests}
             icon={<ErrorIcon />}
             color="warning.main"
           />
@@ -166,41 +225,47 @@ const Dashboard: React.FC = () => {
               </Box>
               
               <Box sx={{ space: 2 }}>
-                {mockRecentRuns.map((run, index) => (
-                  <motion.div
-                    key={run.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.1 }}
-                  >
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        p: 2,
-                        mb: 1,
-                        borderRadius: 2,
-                        backgroundColor: 'rgba(139, 92, 246, 0.05)',
-                        border: '1px solid rgba(139, 92, 246, 0.1)',
-                      }}
+                {recentRuns.length > 0 ? (
+                  recentRuns.map((run, index) => (
+                    <motion.div
+                      key={run.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.1 }}
                     >
-                      <Box sx={{ flexGrow: 1 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                          {run.testName}
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                          {run.timestamp} • {run.duration}
-                        </Typography>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          p: 2,
+                          mb: 1,
+                          borderRadius: 2,
+                          backgroundColor: 'rgba(139, 92, 246, 0.05)',
+                          border: '1px solid rgba(139, 92, 246, 0.1)',
+                        }}
+                      >
+                        <Box sx={{ flexGrow: 1 }}>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                            {run.testName}
+                          </Typography>
+                          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                            {run.timestamp} • {run.duration}
+                          </Typography>
+                        </Box>
+                        <Chip
+                          label={run.status}
+                          color={run.status === 'passed' ? 'success' : 'error'}
+                          size="small"
+                          sx={{ textTransform: 'capitalize' }}
+                        />
                       </Box>
-                      <Chip
-                        label={run.status}
-                        color={run.status === 'passed' ? 'success' : 'error'}
-                        size="small"
-                        sx={{ textTransform: 'capitalize' }}
-                      />
-                    </Box>
-                  </motion.div>
-                ))}
+                    </motion.div>
+                  ))
+                ) : (
+                  <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center', py: 4 }}>
+                    No recent test runs
+                  </Typography>
+                )}
               </Box>
             </CardContent>
           </Card>
@@ -249,11 +314,11 @@ const Dashboard: React.FC = () => {
               <Box sx={{ mb: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                   <Typography variant="body2">Overall Progress</Typography>
-                  <Typography variant="body2">91%</Typography>
+                  <Typography variant="body2">{stats.successRate}%</Typography>
                 </Box>
                 <LinearProgress
                   variant="determinate"
-                  value={91}
+                  value={stats.successRate}
                   sx={{
                     height: 8,
                     borderRadius: 4,
@@ -265,8 +330,8 @@ const Dashboard: React.FC = () => {
                 />
               </Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', color: 'text.secondary' }}>
-                <Typography variant="caption">Passed: {mockStats.passedRuns}</Typography>
-                <Typography variant="caption">Failed: {mockStats.failedRuns}</Typography>
+                <Typography variant="caption">Passed: {stats.passedRuns}</Typography>
+                <Typography variant="caption">Failed: {stats.failedRuns}</Typography>
               </Box>
             </CardContent>
           </Card>

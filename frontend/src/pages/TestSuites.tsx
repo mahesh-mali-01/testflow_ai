@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Card,
@@ -17,6 +17,8 @@ import {
   MenuItem,
   ListItemIcon,
   ListItemText,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -29,104 +31,115 @@ import {
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { testSuitesApi } from '../services/api';
 
-// Mock data for test suites
-const mockTestSuites = [
-  {
-    id: '1',
-    name: 'Authentication Suite',
-    description: 'Tests for user authentication flows',
-    testCount: 8,
-    lastRun: '2024-01-15T10:30:00Z',
-    status: 'active' as const,
-    createdAt: '2024-01-10T09:00:00Z',
-  },
-  {
-    id: '2',
-    name: 'API Integration Suite',
-    description: 'Tests for API key generation and management',
-    testCount: 5,
-    lastRun: '2024-01-15T11:15:00Z',
-    status: 'active' as const,
-    createdAt: '2024-01-12T14:20:00Z',
-  },
-  {
-    id: '3',
-    name: 'User Management Suite',
-    description: 'Tests for user registration and profile management',
-    testCount: 12,
-    lastRun: '2024-01-14T16:45:00Z',
-    status: 'inactive' as const,
-    createdAt: '2024-01-08T11:30:00Z',
-  },
-  {
-    id: '4',
-    name: 'E-commerce Suite',
-    description: 'Tests for shopping cart and checkout flows',
-    testCount: 15,
-    lastRun: '2024-01-13T13:20:00Z',
-    status: 'active' as const,
-    createdAt: '2024-01-05T08:15:00Z',
-  },
-];
+interface TestSuite {
+  id: string;
+  name: string;
+  description: string;
+  testCount: number;
+  lastRun?: string;
+  status: 'active' | 'inactive';
+  createdAt: string;
+}
 
 const TestSuites: React.FC = () => {
-  const [suites, setSuites] = useState(mockTestSuites);
+  const [suites, setSuites] = useState<TestSuite[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [selectedSuite, setSelectedSuite] = useState<any>(null);
+  const [selectedSuite, setSelectedSuite] = useState<TestSuite | null>(null);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [newSuite, setNewSuite] = useState({ name: '', description: '' });
   const navigate = useNavigate();
 
-  const handleCreateSuite = () => {
-    const suite = {
-      id: Date.now().toString(),
-      name: newSuite.name,
-      description: newSuite.description,
-      testCount: 0,
-      status: 'active' as const,
-      createdAt: new Date().toISOString(),
-    };
-    setSuites([...suites, suite]);
-    setNewSuite({ name: '', description: '' });
-    setCreateDialogOpen(false);
-  };
+  useEffect(() => {
+    fetchTestSuites();
+  }, []);
 
-  const handleEditSuite = () => {
-    if (selectedSuite) {
-      setSuites(suites.map(suite => 
-        suite.id === selectedSuite.id 
-          ? { ...suite, name: newSuite.name, description: newSuite.description }
-          : suite
-      ));
-      setEditDialogOpen(false);
-      setSelectedSuite(null);
-      setNewSuite({ name: '', description: '' });
+  const fetchTestSuites = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await testSuitesApi.getAll();
+      if (response.success && response.data) {
+        setSuites(response.data.data);
+      } else {
+        throw new Error(response.error || 'Failed to fetch test suites');
+      }
+    } catch (err) {
+      console.error('Error fetching test suites:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load test suites');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDeleteSuite = (suiteId: string) => {
-    setSuites(suites.filter(suite => suite.id !== suiteId));
-    setAnchorEl(null);
+  const handleCreateSuite = async () => {
+    try {
+      const response = await testSuitesApi.create({
+        name: newSuite.name,
+        description: newSuite.description,
+      });
+      
+      if (response.success && response.data) {
+        setSuites([...suites, response.data]);
+        setNewSuite({ name: '', description: '' });
+        setCreateDialogOpen(false);
+      } else {
+        throw new Error(response.error || 'Failed to create test suite');
+      }
+    } catch (err) {
+      console.error('Error creating test suite:', err);
+      setError(err instanceof Error ? err.message : 'Failed to create test suite');
+    }
   };
 
-  const handleMenuClick = (event: React.MouseEvent<HTMLElement>, suite: any) => {
-    setAnchorEl(event.currentTarget);
+  const handleEditSuite = async () => {
+    if (selectedSuite) {
+      try {
+        const response = await testSuitesApi.update(selectedSuite.id, {
+          name: newSuite.name,
+          description: newSuite.description,
+        });
+        
+        if (response.success && response.data) {
+          setSuites(suites.map(suite => 
+            suite.id === selectedSuite.id ? response.data : suite
+          ));
+          setEditDialogOpen(false);
+          setSelectedSuite(null);
+          setNewSuite({ name: '', description: '' });
+        } else {
+          throw new Error(response.error || 'Failed to update test suite');
+        }
+      } catch (err) {
+        console.error('Error updating test suite:', err);
+        setError(err instanceof Error ? err.message : 'Failed to update test suite');
+      }
+    }
+  };
+
+  const handleDeleteSuite = async (suiteId: string) => {
+    try {
+      const response = await testSuitesApi.delete(suiteId);
+      if (response.success) {
+        setSuites(suites.filter(suite => suite.id !== suiteId));
+      } else {
+        throw new Error(response.error || 'Failed to delete test suite');
+      }
+    } catch (err) {
+      console.error('Error deleting test suite:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete test suite');
+    }
+  };
+
+  const handleEditClick = (suite: TestSuite) => {
     setSelectedSuite(suite);
-  };
-
-  const handleMenuClose = () => {
+    setNewSuite({ name: suite.name, description: suite.description });
+    setEditDialogOpen(true);
     setAnchorEl(null);
-    setSelectedSuite(null);
-  };
-
-  const handleEditClick = () => {
-    if (selectedSuite) {
-      setNewSuite({ name: selectedSuite.name, description: selectedSuite.description });
-      setEditDialogOpen(true);
-    }
-    handleMenuClose();
   };
 
   const handleEditDialogClose = () => {
@@ -144,6 +157,27 @@ const TestSuites: React.FC = () => {
     });
   };
 
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+        <Button variant="contained" onClick={fetchTestSuites}>
+          Retry
+        </Button>
+      </Box>
+    );
+  }
+
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
@@ -159,79 +193,102 @@ const TestSuites: React.FC = () => {
           variant="contained"
           startIcon={<AddIcon />}
           onClick={() => setCreateDialogOpen(true)}
-          sx={{ px: 3 }}
         >
           Create Suite
         </Button>
       </Box>
 
-      <Grid container spacing={3}>
-        {suites.map((suite, index) => (
-          <Grid item xs={12} sm={6} md={4} key={suite.id}>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
+      {suites.length === 0 ? (
+        <Card>
+          <CardContent sx={{ textAlign: 'center', py: 8 }}>
+            <FolderIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              No test suites found
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
+              Create your first test suite to get started with TestFlow AI
+            </Typography>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setCreateDialogOpen(true)}
             >
-              <Card
-                sx={{
-                  height: '100%',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: '0 12px 40px rgba(139, 92, 246, 0.3)',
-                  },
-                }}
-                onClick={() => navigate(`/suites/${suite.id}`)}
+              Create Test Suite
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <Grid container spacing={3}>
+          {suites.map((suite, index) => (
+            <Grid item xs={12} sm={6} md={4} key={suite.id}>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
               >
-                <CardContent>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <FolderIcon sx={{ color: 'primary.main', mr: 1 }} />
-                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                        {suite.name}
+                <Card
+                  sx={{
+                    height: '100%',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: '0 8px 25px rgba(139, 92, 246, 0.15)',
+                    },
+                  }}
+                  onClick={() => navigate(`/suites/${suite.id}`)}
+                >
+                  <CardContent>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <FolderIcon sx={{ color: 'primary.main', mr: 1 }} />
+                        <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                          {suite.name}
+                        </Typography>
+                      </Box>
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setAnchorEl(e.currentTarget);
+                          setSelectedSuite(suite);
+                        }}
+                      >
+                        <MoreIcon />
+                      </IconButton>
+                    </Box>
+                    
+                    <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
+                      {suite.description}
+                    </Typography>
+                    
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                      <Chip
+                        label={suite.status}
+                        color={suite.status === 'active' ? 'success' : 'default'}
+                        size="small"
+                        sx={{ textTransform: 'capitalize' }}
+                      />
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                        {suite.testCount} tests
                       </Typography>
                     </Box>
-                    <IconButton
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleMenuClick(e, suite);
-                      }}
-                    >
-                      <MoreIcon />
-                    </IconButton>
-                  </Box>
-
-                  <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
-                    {suite.description}
-                  </Typography>
-
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                    <Chip
-                      label={suite.status}
-                      color={suite.status === 'active' ? 'success' : 'default'}
-                      size="small"
-                      sx={{ textTransform: 'capitalize' }}
-                    />
-                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                      {suite.testCount} tests
-                    </Typography>
-                  </Box>
-
-                  <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
-                    <ScheduleIcon sx={{ fontSize: 16, mr: 0.5 }} />
-                    <Typography variant="caption">
-                      Last run: {suite.lastRun ? formatDate(suite.lastRun) : 'Never'}
-                    </Typography>
-                  </Box>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </Grid>
-        ))}
-      </Grid>
+                    
+                    {suite.lastRun && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
+                        <ScheduleIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                        <Typography variant="caption">
+                          Last run: {formatDate(suite.lastRun)}
+                        </Typography>
+                      </Box>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </Grid>
+          ))}
+        </Grid>
+      )}
 
       {/* Create Suite Dialog */}
       <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="sm" fullWidth>
@@ -260,7 +317,9 @@ const TestSuites: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleCreateSuite} variant="contained">Create</Button>
+          <Button onClick={handleCreateSuite} variant="contained">
+            Create
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -291,7 +350,9 @@ const TestSuites: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleEditDialogClose}>Cancel</Button>
-          <Button onClick={handleEditSuite} variant="contained">Save</Button>
+          <Button onClick={handleEditSuite} variant="contained">
+            Save
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -299,15 +360,20 @@ const TestSuites: React.FC = () => {
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
+        onClose={() => setAnchorEl(null)}
       >
-        <MenuItem onClick={handleEditClick}>
+        <MenuItem onClick={() => handleEditClick(selectedSuite!)}>
           <ListItemIcon>
             <EditIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText>Edit</ListItemText>
         </MenuItem>
-        <MenuItem onClick={() => handleDeleteSuite(selectedSuite?.id)}>
+        <MenuItem onClick={() => {
+          if (selectedSuite) {
+            handleDeleteSuite(selectedSuite.id);
+            setAnchorEl(null);
+          }
+        }}>
           <ListItemIcon>
             <DeleteIcon fontSize="small" />
           </ListItemIcon>
