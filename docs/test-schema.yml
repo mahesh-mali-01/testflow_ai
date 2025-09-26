@@ -1,0 +1,27 @@
+test_id: unique-test-id-123
+tags: [smoke, login, critical]
+priority: high
+author: mahesh.mali@flytbase.com
+created_at: 2025-09-26T12:00:00Z
+app_url: https://reports-stag.verkos.ai
+browser: chrome
+timeout: 30000
+
+preconditions:
+  - User must have a valid account registered.
+
+feature: Api Key Flow
+
+scenarios:
+  - name: Use is able to generate and view api key
+    steps:
+      - type: Given
+        description: the user navigates to the home page of website
+      - type: When
+        description: the user click of the api keys from the profile section
+      - type: Then
+        description: the user should see the api key for his organization
+      - type: When
+        description: the user regenerate the api key
+      - type: Then
+        description: the user should see the new api key generated for his organization

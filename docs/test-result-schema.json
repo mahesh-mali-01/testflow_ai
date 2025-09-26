@@ -1,0 +1,23 @@
+{
+  "test_id": "unique-test-id-123",
+  "status": "pass",
+  "summary": "Test completed successfully with expected error message displayed.",
+  "execution_time_ms": 4500,
+  "start_timestamp": "2025-09-26T12:05:00Z",
+  "end_timestamp": "2025-09-26T12:05:00Z",
+  "stages": [
+    {
+      "stage": "Given",
+      "description": "the user navigates to the login page",
+      "actions": [
+        {
+          "action": "page.goto('https://example.com/login')",
+          "outcome": "success",
+          "details": "Navigated successfully; errors if any occured"
+        }
+      ],
+      "observations": "Page loaded but form delayed; LLM suggested retry.",
+      "status": "pass"
+    }
+  ]
+}
