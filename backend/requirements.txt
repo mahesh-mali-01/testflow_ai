@@ -13,3 +13,9 @@ dnspython>=2.2.0  # For MongoDB SRV connection strings
 weaviate-client>=4.0.0  # For Weaviate vector database integration
 
 boto3==1.39.0
+
+# Browser Use Agent dependencies
+browser-use>=0.1.0  # Core browser automation library
+playwright>=1.40.0  # Browser automation engine
+pyyaml>=6.0  # For YAML test specification parsing
+lmnr>=0.1.0  # Optional: Laminar observability platform
