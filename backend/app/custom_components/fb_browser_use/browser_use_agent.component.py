@@ -34,12 +34,28 @@ class BrowserUseAgentComponent(Component):
             info="API key for the selected LLM provider",
             required=True,
         ),
-        StrInput(
+        DropdownInput(
             name="model_name",
             display_name="Model Name",
-            info="Model to use (e.g., gpt-4o-mini, claude-3.5-sonnet)",
-            value="gpt-4o-mini",
-            required=True,
+            info="Choose the specific model",
+            value="claude-sonnet-4-20250514",
+            options=[
+                # Anthropic
+                "claude-sonnet-4-20250514",
+                "claude-3-7-sonnet-20250219",
+                # OpenAI
+                "gpt-4.1",
+                "gpt-4o",
+                "gpt-4o-mini",
+                # xAI
+                "grok-code-fast-1",
+                "grok-4-fast-reasoning",
+                # Google
+                "gemini-2.5-flash",
+                "gemini-2.5-flash-lite",
+                "gemini-2.0-flash",
+                "gemini-2.0-flash-lite",
+            ],
         ),
         MultilineInput(
             name="system_prompt",
@@ -137,7 +153,7 @@ Structure your final result as JSON matching this schema:
 </quality_standards>""",
             required=False,
         ),
-        DataInput(
+        MultilineInput(
             name="test_spec",
             display_name="Test Specification",
             info="Test specification file (YAML format) or test data",
@@ -170,7 +186,7 @@ Structure your final result as JSON matching this schema:
             value=100,
             required=False,
         ),
-        FloatInput(
+        IntInput(
             name="step_timeout",
             display_name="Step Timeout (seconds)",
             info="Timeout for each agent step",
