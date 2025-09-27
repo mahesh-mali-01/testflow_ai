@@ -5,6 +5,7 @@ import morgan from "morgan";
 import dotenv from "dotenv";
 import { connectDB } from "./utils/database";
 import { errorHandler, notFound } from "./middleware/errorHandler";
+import { seedDatabase } from "./utils/seedData";
 import routes from "./routes";
 
 // Load environment variables
@@ -21,8 +22,16 @@ app.use(helmet());
 // CORS configuration
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+    origin: [
+      "http://localhost:5174",
+      "http://localhost:3000",
+      "http://127.0.0.1:5173",
+      "http://127.0.0.1:3000",
+    ],
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    optionsSuccessStatus: 200,
   })
 );
 
@@ -63,6 +72,14 @@ const startServer = async () => {
   try {
     // Connect to database
     await connectDB();
+
+    // Seed database with dummy data (only in development or if explicitly requested)
+    if (
+      process.env.NODE_ENV !== "production" ||
+      process.env.SEED_DATABASE === "true"
+    ) {
+      await seedDatabase();
+    }
 
     // Start listening
     app.listen(PORT, () => {

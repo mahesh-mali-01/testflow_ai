@@ -24,7 +24,7 @@ services:
     ports:
       - "3001:3001"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=development
       - PORT=3001
       - MONGODB_URI=mongodb://admin:password123@mongodb:27017/testflow_ai?authSource=admin
       - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
@@ -32,6 +32,7 @@ services:
       - CORS_ORIGIN=http://localhost:5173
       - API_VERSION=v1
       - API_PREFIX=/api
+      - SEED_DATABASE=true
     depends_on:
       - mongodb
     volumes:
