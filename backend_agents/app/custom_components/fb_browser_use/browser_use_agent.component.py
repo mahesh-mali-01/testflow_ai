@@ -266,13 +266,68 @@ Structure your final result as JSON matching this schema:
 
     def _check_dependencies(self):
         """Check if required dependencies are available"""
+        import sys
+        import importlib.util
+        
+        self._debug_log(f"Python path: {sys.path[:3]}...", "INFO")
+        
+        # Check browser_use package
         try:
             import browser_use
-        except ImportError:
-            raise ImportError(
-                "browser-use package is required. "
-                "Please install it: pip install browser-use"
-            )
+            self._debug_log(f"browser_use package found at: {browser_use.__file__}", "INFO")
+            self._debug_log(f"browser_use version: {getattr(browser_use, '__version__', 'unknown')}", "INFO")
+        except ImportError as e:
+            self._debug_log(f"browser_use import failed: {str(e)}", "ERROR")
+            # Check if package is installed using importlib
+            spec = importlib.util.find_spec("browser_use")
+            if spec is None:
+                raise ImportError(
+                    "browser-use package is not installed. "
+                    "Please install it: pip install browser-use"
+                )
+            else:
+                self._debug_log(f"browser_use spec found but import failed: {spec}", "ERROR")
+                raise ImportError(f"browser_use import error: {str(e)}")
+        
+        # Check playwright package
+        try:
+            import playwright
+            self._debug_log(f"playwright package found at: {playwright.__file__}", "INFO")
+        except ImportError as e:
+            self._debug_log(f"playwright import failed: {str(e)}", "WARN")
+            # This is optional, so we won't fail the check
+            self._debug_log("playwright not found but continuing - may be installed separately", "WARN")
+        
+        # Test specific browser_use imports
+        try:
+            from browser_use import Agent
+            self._debug_log("Successfully imported Agent from browser_use", "INFO")
+        except ImportError as e:
+            self._debug_log(f"Failed to import Agent: {str(e)}", "ERROR")
+            raise ImportError(f"Cannot import Agent from browser_use: {str(e)}")
+            
+        try:
+            from browser_use import ChatOpenAI
+            self._debug_log("Successfully imported ChatOpenAI from browser_use", "INFO")
+        except ImportError as e:
+            self._debug_log(f"Failed to import ChatOpenAI: {str(e)}", "ERROR")
+            raise ImportError(f"Cannot import ChatOpenAI from browser_use: {str(e)}")
+            
+        try:
+            from browser_use import ChatAnthropic
+            self._debug_log("Successfully imported ChatAnthropic from browser_use", "INFO")
+        except ImportError as e:
+            self._debug_log(f"Failed to import ChatAnthropic: {str(e)}", "ERROR")
+            raise ImportError(f"Cannot import ChatAnthropic from browser_use: {str(e)}")
+            
+        try:
+            from browser_use import BrowserProfile
+            self._debug_log("Successfully imported BrowserProfile from browser_use", "INFO")
+        except ImportError as e:
+            self._debug_log(f"Failed to import BrowserProfile: {str(e)}", "ERROR")
+            raise ImportError(f"Cannot import BrowserProfile from browser_use: {str(e)}")
+            
+        self._debug_log("All browser_use dependencies check passed", "INFO")
 
     def _setup_observability(self):
         """Setup observability if API key is provided"""
@@ -293,6 +348,8 @@ Structure your final result as JSON matching this schema:
     def _create_llm_instance(self):
         """Create LLM instance based on provider"""
         try:
+            self._debug_log(f"Creating LLM instance for provider: {self.llm_provider}", "INFO")
+            
             if self.llm_provider == "openai":
                 from browser_use import ChatOpenAI
                 llm = ChatOpenAI(
@@ -300,6 +357,7 @@ Structure your final result as JSON matching this schema:
                     api_key=self.api_key,
                     temperature=self.temperature
                 )
+                self._debug_log("ChatOpenAI instance created successfully", "INFO")
             elif self.llm_provider == "anthropic":
                 from browser_use import ChatAnthropic
                 llm = ChatAnthropic(
@@ -307,14 +365,23 @@ Structure your final result as JSON matching this schema:
                     api_key=self.api_key,
                     temperature=self.temperature
                 )
+                self._debug_log("ChatAnthropic instance created successfully", "INFO")
             else:
                 raise ValueError(f"Unsupported LLM provider: {self.llm_provider}")
 
             self._debug_log(f"LLM instance created: {self.llm_provider} - {self.model_name}", "INFO")
             return llm
 
+        except ImportError as e:
+            error_msg = f"Import error for {self.llm_provider} LLM: {str(e)}. Ensure browser-use is properly installed."
+            self._debug_log(error_msg, "ERROR")
+            raise Exception(error_msg)
         except Exception as e:
-            error_msg = f"Error creating LLM instance: {str(e)}"
+            error_str = str(e)
+            if "Pydantic" in error_str and "TypeVar" in error_str:
+                error_msg = f"Pydantic compatibility issue: {error_str}. Try: pip install 'pydantic>=2.0.0,<2.10.0'"
+            else:
+                error_msg = f"Error creating LLM instance: {error_str}"
             self._debug_log(error_msg, "ERROR")
             raise Exception(error_msg)
 
@@ -363,6 +430,7 @@ Structure your final result as JSON matching this schema:
         """Create browser profile configuration"""
         try:
             from browser_use import BrowserProfile
+            self._debug_log("BrowserProfile imported successfully", "INFO")
 
             # Parse browser size
             width, height = 1280, 720
@@ -382,6 +450,10 @@ Structure your final result as JSON matching this schema:
             self._debug_log(f"Browser profile created: {width}x{height}, headless={self.headless}", "INFO")
             return browser_profile
 
+        except ImportError as e:
+            error_msg = f"Import error for BrowserProfile: {str(e)}. Ensure browser-use is properly installed."
+            self._debug_log(error_msg, "ERROR")
+            raise Exception(error_msg)
         except Exception as e:
             error_msg = f"Error creating browser profile: {str(e)}"
             self._debug_log(error_msg, "ERROR")
@@ -448,6 +520,7 @@ Structure your final result as JSON matching this schema:
         """Run the browser agent with the given task"""
         try:
             from browser_use import Agent
+            self._debug_log("Agent imported successfully", "INFO")
 
             self._debug_log("Creating browser agent...", "INFO")
 
@@ -461,11 +534,14 @@ Structure your final result as JSON matching this schema:
             # Add optional parameters
             if hasattr(self, 'system_prompt') and self.system_prompt:
                 agent_kwargs['extend_system_message'] = self.system_prompt
+                self._debug_log("Added system prompt to agent", "INFO")
 
             if hasattr(self, 'flash_mode') and self.flash_mode:
                 agent_kwargs['flash_mode'] = True
+                self._debug_log("Enabled flash mode", "INFO")
 
             agent = Agent(**agent_kwargs)
+            self._debug_log("Agent instance created successfully", "INFO")
 
             self._debug_log("Starting agent execution...", "INFO")
             
@@ -478,6 +554,10 @@ Structure your final result as JSON matching this schema:
             self._debug_log("Agent execution completed successfully", "INFO")
             return result
 
+        except ImportError as e:
+            error_msg = f"Import error for Agent: {str(e)}. Ensure browser-use is properly installed."
+            self._debug_log(error_msg, "ERROR")
+            raise Exception(error_msg)
         except Exception as e:
             error_msg = f"Error running browser agent: {str(e)}"
             self._debug_log(error_msg, "ERROR")

@@ -1,6 +1,4 @@
-# Core AI/ML packages
-google-generativeai==0.8.5
-
+# Core AI/ML package
 # Required dependencies for MongoDB components
 pydantic>=2.0.0
 pymongo>=4.0.0
@@ -9,13 +7,9 @@ pymongo>=4.0.0
 motor>=3.0.0  # For async MongoDB operations
 dnspython>=2.2.0  # For MongoDB SRV connection strings
 
-# Weaviate dependencies for vector database operations
-weaviate-client>=4.0.0  # For Weaviate vector database integration
-
-boto3==1.39.0
 
 # Browser Use Agent dependencies
-browser-use>=0.1.0  # Core browser automation library
-playwright>=1.40.0  # Browser automation engine
+browser-use>=0.7.0  # Core browser automation library
+playwright>=1.40.0  # Browser automation engine (required by browser-use)
 pyyaml>=6.0  # For YAML test specification parsing
 lmnr>=0.1.0  # Optional: Laminar observability platform

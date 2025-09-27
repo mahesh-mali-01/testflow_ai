@@ -118,8 +118,8 @@ src/
 
 2. **Using Docker**
    ```bash
-   docker build -t testflow-backend .
-   docker run -p 3001:3001 testflow-backend
+   docker build -t testflow-backend_agents .
+   docker run -p 3001:3001 testflow-backend_agents
    ```
 
 ## 📊 API Endpoints

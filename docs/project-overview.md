@@ -123,7 +123,7 @@ timeout: 30000
 preconditions:
   - User must have a valid account registered.
   - Browser cookies should be cleared before starting.
-  - API backend must be responding (e.g., mock if needed).
+  - API backend_agents must be responding (e.g., mock if needed).
 
 feature: User Authentication
 

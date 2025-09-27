@@ -21,7 +21,7 @@ services:
   # Test Flow AI Backend
   backend:
     build: .
-    container_name: testflow-backend
+    container_name: testflow-backend_agents
     restart: unless-stopped
     ports:
       - "3001:3001"
